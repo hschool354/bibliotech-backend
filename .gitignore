@@ -1,0 +1,19 @@
+# Ignore build files
+target/
+*.class
+
+# Ignore IDE settings
+.idea/
+*.iml
+
+# Ignore Maven wrapper files
+.mvn/
+!mvn/wrapper/maven-wrapper.jar
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore environment files
+.env
+application.properties
