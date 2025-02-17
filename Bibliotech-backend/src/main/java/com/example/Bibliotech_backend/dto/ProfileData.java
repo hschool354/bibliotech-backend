@@ -1,10 +1,15 @@
 package com.example.Bibliotech_backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
 import java.time.LocalDate;
 
+@JsonDeserialize
 public class ProfileData {
     private String fullName;
     private String phone;
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate dob;
     private String gender;
     private String address;

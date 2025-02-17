@@ -83,4 +83,9 @@ public class AuthService {
 
         return new AuthResponse(token, user.getUsername(), user.getEmail(), isFirstLogin);
     }
+
+    public Users getUserById(Integer userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException("User not found with id: " + userId));
+    }
 }
