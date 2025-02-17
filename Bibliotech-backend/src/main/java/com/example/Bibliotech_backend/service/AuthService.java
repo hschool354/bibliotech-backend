@@ -28,6 +28,9 @@ public class AuthService {
     @Autowired
     private IdGeneratorService idGeneratorService;
 
+    @Autowired
+    private UserRegistrationStatusService registrationStatusService;
+
     public AuthResponse signup(SignUpRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email already exists");
@@ -48,8 +51,9 @@ public class AuthService {
         Users savedUser = userRepository.save(user);
 
         String token = tokenProvider.generateToken(savedUser);
+        registrationStatusService.createStatus(user.getUserId());
 
-        return new AuthResponse(token, savedUser.getUsername(), savedUser.getEmail());
+        return new AuthResponse(token, user.getUsername(), user.getEmail(), true);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -75,6 +79,8 @@ public class AuthService {
 
         String token = tokenProvider.generateToken(user);
 
-        return new AuthResponse(token, user.getUsername(), user.getEmail());
+        boolean isFirstLogin = registrationStatusService.isFirstLogin(user.getUserId());
+
+        return new AuthResponse(token, user.getUsername(), user.getEmail(), isFirstLogin);
     }
 }

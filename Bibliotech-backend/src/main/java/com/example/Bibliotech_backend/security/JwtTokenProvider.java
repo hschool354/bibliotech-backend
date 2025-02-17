@@ -15,46 +15,36 @@ import java.util.Date;
 
 @Component
 public class JwtTokenProvider {
-    private Key key;
-
+    // Tăng độ dài secret key
     @Value("${app.jwtSecret}")
     private String jwtSecret;
 
-    @Value("${app.jwtExpirationInMs}")
-    private int jwtExpirationInMs;
-
-    @PostConstruct
-    public void init() {
-        key = Keys.secretKeyFor(SignatureAlgorithm.HS512);
-    }
-
     public String generateToken(Users user) {
+        // Tạo secret key với độ dài đủ cho HS512
+        byte[] keyBytes = jwtSecret.getBytes();
+        Key key = Keys.hmacShaKeyFor(keyBytes);
+
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
+        Date expiryDate = new Date(now.getTime() + 86400000); // 1 day
 
         return Jwts.builder()
-                .setSubject(Long.toString(user.getUserId()))
-                .setIssuedAt(new Date())
+                .setSubject(user.getUserId().toString())
+                .setIssuedAt(now)
                 .setExpiration(expiryDate)
-                .signWith(key)
+                .signWith(key, SignatureAlgorithm.HS512)
                 .compact();
     }
 
-    public Long getUserIdFromJWT(String token) {
-        Claims claims = Jwts.parser()
-                .setSigningKey(jwtSecret)
+    public Integer getUserIdFromJWT(String token) {
+        byte[] keyBytes = jwtSecret.getBytes();
+        Key key = Keys.hmacShaKeyFor(keyBytes);
+
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
 
-        return Long.parseLong(claims.getSubject());
-    }
-
-    public boolean validateToken(String authToken) {
-        try {
-            Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(authToken);
-            return true;
-        } catch (Exception ex) {
-            return false;
-        }
+        return Integer.parseInt(claims.getSubject());
     }
 }

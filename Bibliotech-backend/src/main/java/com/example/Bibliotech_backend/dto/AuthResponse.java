@@ -4,11 +4,13 @@ public class AuthResponse {
     private String token;
     private String username;
     private String email;
+    private boolean isFirstLogin;
 
-    public AuthResponse(String token, String username, String email) {
+    public AuthResponse(String token, String username, String email, boolean isFirstLogin) {
         this.token = token;
         this.username = username;
         this.email = email;
+        this.isFirstLogin = isFirstLogin;
     }
 
     public String getToken() {
@@ -33,5 +35,13 @@ public class AuthResponse {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public boolean isFirstLogin() {
+        return isFirstLogin;
+    }
+
+    public void setFirstLogin(boolean firstLogin) {
+        isFirstLogin = firstLogin;
     }
 }
