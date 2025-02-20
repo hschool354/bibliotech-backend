@@ -38,9 +38,6 @@ public class UserProfile {
         Male, Female, Other
     }
 
-    // Getters and setters
-    // ... (similar to ProfileData)
-
     public Integer getUserId() {
         return userId;
     }

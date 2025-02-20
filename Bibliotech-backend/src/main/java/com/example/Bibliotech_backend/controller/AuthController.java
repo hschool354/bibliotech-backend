@@ -59,32 +59,6 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/complete-profile")
-    public ResponseEntity<?> completeProfile(
-            @RequestHeader("Authorization") String token,
-            @RequestBody ProfileData profileData
-    ) {
-        if (token == null || !token.startsWith("Bearer ")) {
-            logger.error("Invalid token format");
-            throw new BadRequestException("Invalid token format");
-        }
-
-        try {
-            String rawToken = token.substring(7);
-            logger.debug("Token received: " + rawToken);
-            logger.debug("Profile data received: " + profileData);  // Add this line
-
-            Integer userId = jwtTokenProvider.getUserIdFromJWT(rawToken);
-            logger.debug("User ID extracted: " + userId);
-
-            registrationStatusService.completeProfile(userId, profileData);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            logger.error("Error completing profile", e);
-            throw new BadRequestException("Error completing profile: " + e.getMessage());
-        }
-    }
-
     @GetMapping("/check-admin")
     public ResponseEntity<Boolean> checkAdminStatus(@RequestHeader("Authorization") String token) {
         if (token == null || !token.startsWith("Bearer ")) {
@@ -113,6 +87,33 @@ public class AuthController {
         } catch (Exception e) {
             logger.error("Error checking admin status", e);
             throw new BadRequestException("Error checking admin status: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestHeader("Authorization") String token) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            logger.error("Invalid token format");
+            throw new BadRequestException("Invalid token format");
+        }
+
+        try {
+            String rawToken = token.substring(7);
+
+            // Get user ID from JWT token
+            Integer userId = jwtTokenProvider.getUserIdFromJWT(rawToken);
+            logger.debug("User ID {} logging out", userId);
+
+            // Optional: Add any server-side logout logic here
+            // For example:
+            // - Invalidate token if you're maintaining a blacklist
+            // - Clear any server-side sessions
+            // - Log the logout event
+
+            return ResponseEntity.ok().body("Logged out successfully");
+        } catch (Exception e) {
+            logger.error("Error during logout", e);
+            throw new BadRequestException("Error during logout: " + e.getMessage());
         }
     }
 }
