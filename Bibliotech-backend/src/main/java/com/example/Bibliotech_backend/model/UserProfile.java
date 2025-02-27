@@ -6,6 +6,7 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "UserProfiles")
 public class UserProfile {
+
     @Id
     private Integer userId;
 
@@ -36,6 +37,21 @@ public class UserProfile {
 
     public enum Gender {
         Male, Female, Other
+    }
+
+    public UserProfile() {
+    }
+
+    public UserProfile(Integer userId, String fullName, String phone, LocalDate dob, Gender gender, String address, String nationality, String bio, String profilePictureUrl) {
+        this.userId = userId;
+        this.fullName = fullName;
+        this.phone = phone;
+        this.dob = dob;
+        this.gender = gender;
+        this.address = address;
+        this.nationality = nationality;
+        this.bio = bio;
+        this.profilePictureUrl = profilePictureUrl;
     }
 
     public Integer getUserId() {

@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "UserRegistrationStatus")
 public class UserRegistrationStatus {
+
     @Id
     private Integer userId;
 
@@ -15,7 +16,15 @@ public class UserRegistrationStatus {
     @Column(name = "profile_completion_date")
     private LocalDateTime profileCompletionDate;
 
-    // Getters and setters
+    public UserRegistrationStatus() {
+    }
+
+    public UserRegistrationStatus(Integer userId, boolean isProfileCompleted, LocalDateTime profileCompletionDate) {
+        this.userId = userId;
+        this.isProfileCompleted = isProfileCompleted;
+        this.profileCompletionDate = profileCompletionDate;
+    }
+
     public Integer getUserId() {
         return userId;
     }

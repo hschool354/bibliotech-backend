@@ -5,11 +5,13 @@ import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Lớp UserPrincipal triển khai UserDetails để đại diện cho thông tin xác thực của người dùng.
+ */
 @Getter
 public class UserPrincipal implements UserDetails {
     private final Integer id;

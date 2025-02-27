@@ -1,12 +1,12 @@
 package com.example.Bibliotech_backend.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
-
+import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
+@Builder
 @Entity
 @Table(name = "Users")
 public class Users {
@@ -57,7 +57,28 @@ public class Users {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Getters and Setters
+    public enum RegistrationStatus {
+        PENDING,
+        COMPLETED
+    }
+
+    public Users() {
+    }
+
+    public Users(Integer userId, String username, String email, String password, Boolean isAdmin, Boolean isPremium, BigDecimal accountBalance, RegistrationStatus registrationStatus, LocalDateTime lastLoginDate, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.userId = userId;
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.isAdmin = isAdmin;
+        this.isPremium = isPremium;
+        this.accountBalance = accountBalance;
+        this.registrationStatus = registrationStatus;
+        this.lastLoginDate = lastLoginDate;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
     public Integer getUserId() {
         return userId;
     }
@@ -94,16 +115,16 @@ public class Users {
         return isAdmin;
     }
 
-    public void setIsAdmin(Boolean isAdmin) {
-        this.isAdmin = isAdmin;
+    public void setIsAdmin(Boolean admin) {
+        isAdmin = admin;
     }
 
     public Boolean getIsPremium() {
         return isPremium;
     }
 
-    public void setIsPremium(Boolean isPremium) {
-        this.isPremium = isPremium;
+    public void setIsPremium(Boolean premium) {
+        isPremium = premium;
     }
 
     public BigDecimal getAccountBalance() {
@@ -134,13 +155,15 @@ public class Users {
         return createdAt;
     }
 
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    // Enum cho trạng thái đăng ký
-    public enum RegistrationStatus {
-        PENDING,
-        COMPLETED
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

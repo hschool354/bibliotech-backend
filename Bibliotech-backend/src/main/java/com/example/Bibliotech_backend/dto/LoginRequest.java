@@ -1,7 +1,13 @@
 package com.example.Bibliotech_backend.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class LoginRequest {
+
+    @NotBlank(message = "Tên đăng nhập hoặc email không được để trống")
     private String identifier;
+
+    @NotBlank(message = "Mật khẩu không được để trống")
     private String password;
 
     public LoginRequest() {
@@ -16,7 +22,15 @@ public class LoginRequest {
         return identifier;
     }
 
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
+    }
+
     public String getPassword() {
         return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }

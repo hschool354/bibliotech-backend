@@ -1,15 +1,15 @@
 package com.example.Bibliotech_backend.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.time.LocalDate;
 
 @JsonDeserialize
 public class ProfileData {
+
     private String fullName;
     private String phone;
-    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate dob;
     private String gender;
     private String address;
@@ -17,10 +17,20 @@ public class ProfileData {
     private String bio;
     private String profilePictureUrl;
 
-    // Default constructor
-    public ProfileData() {}
+    public ProfileData() {
+    }
 
-    // Getters and setters
+    public ProfileData(String fullName, String phone, LocalDate dob, String gender, String address, String nationality, String bio, String profilePictureUrl) {
+        this.fullName = fullName;
+        this.phone = phone;
+        this.dob = dob;
+        this.gender = gender;
+        this.address = address;
+        this.nationality = nationality;
+        this.bio = bio;
+        this.profilePictureUrl = profilePictureUrl;
+    }
+
     public String getFullName() {
         return fullName;
     }
