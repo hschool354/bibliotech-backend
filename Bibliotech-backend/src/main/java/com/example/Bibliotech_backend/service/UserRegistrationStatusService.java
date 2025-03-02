@@ -11,6 +11,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -96,5 +97,31 @@ public class UserRegistrationStatusService {
         modelMapper.map(profileData, profile);
         userProfileRepository.save(profile);
         markProfileCompleted(userId);
+    }
+
+    /**
+     * Cập nhật trạng thái đăng ký của người dùng
+     *
+     * @param userId ID của người dùng
+     * @param isProfileCompleted Trạng thái hoàn thành profile
+     * @return true nếu cập nhật thành công, false nếu thất bại
+     */
+    public Boolean updateRegistrationStatus(Integer userId, Boolean isProfileCompleted) {
+        try {
+            UserRegistrationStatus status = repository.findById(userId)
+                    .orElse(new UserRegistrationStatus());
+
+            status.setUserId(userId);
+            status.setProfileCompleted(isProfileCompleted);
+
+            if (isProfileCompleted && status.getProfileCompletionDate() == null) {
+                status.setProfileCompletionDate(LocalDateTime.from(Instant.now()));
+            }
+
+            repository.save(status);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

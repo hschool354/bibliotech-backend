@@ -4,14 +4,23 @@ import com.example.Bibliotech_backend.dto.AuthResponse;
 import com.example.Bibliotech_backend.dto.LoginRequest;
 import com.example.Bibliotech_backend.dto.SignUpRequest;
 import com.example.Bibliotech_backend.exception.BadRequestException;
+import com.example.Bibliotech_backend.model.Users;
 import com.example.Bibliotech_backend.repository.UserRepository;
 import com.example.Bibliotech_backend.security.JwtTokenProvider;
-import com.example.Bibliotech_backend.model.Users;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -20,25 +29,40 @@ import java.util.Optional;
 @Service
 public class AuthService {
 
-    /** Repository để truy vấn thông tin người dùng từ cơ sở dữ liệu. */
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+
+    /**
+     * Repository để truy vấn thông tin người dùng từ cơ sở dữ liệu.
+     */
     @Autowired
     private UserRepository userRepository;
 
-    /** Mã hóa mật khẩu cho người dùng. */
+    /**
+     * Mã hóa mật khẩu cho người dùng.
+     */
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    /** Cung cấp token JWT để xác thực. */
+    /**
+     * Cung cấp token JWT để xác thực.
+     */
     @Autowired
     private JwtTokenProvider tokenProvider;
 
-    /** Service để tạo ID người dùng duy nhất. */
+    /**
+     * Service để tạo ID người dùng duy nhất.
+     */
     @Autowired
     private IdGeneratorService idGeneratorService;
 
-    /** Service để quản lý trạng thái đăng ký của người dùng. */
+    /**
+     * Service để quản lý trạng thái đăng ký của người dùng.
+     */
     @Autowired
     private UserRegistrationStatusService registrationStatusService;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
     /**
      * Đăng ký người dùng mới.
@@ -113,6 +137,38 @@ public class AuthService {
     }
 
     /**
+     * Cập nhật thời gian đăng nhập cuối cùng của người dùng
+     *
+     * @param userId ID của người dùng
+     */
+    public void updateLastLoginDate(Integer userId) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setLastLoginDate(LocalDateTime.now());
+            userRepository.save(user);
+        });
+    }
+
+    /**
+     * Kiểm tra xác thực người dùng
+     *
+     * @param username Tên đăng nhập
+     * @param password Mật khẩu
+     * @return Đối tượng Users nếu xác thực thành công, null nếu xác thực thất bại
+     */
+    public Users authenticateUser(String username, String password) {
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(username, password)
+            );
+
+            return getUserByUsername(username);
+        } catch (AuthenticationException e) {
+            logger.error("Xác thực không thành công cho người dùng: {}", username, e);
+            return null;
+        }
+    }
+
+    /**
      * Tìm kiếm người dùng theo ID.
      *
      * @param userId ID của người dùng.
@@ -122,5 +178,35 @@ public class AuthService {
     public Users getUserById(Integer userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("User not found with id: " + userId));
+    }
+
+    /**
+     * Lấy thông tin người dùng theo tên đăng nhập
+     *
+     * @param username Tên đăng nhập
+     * @return Đối tượng Users, null nếu không tìm thấy
+     */
+    public Users getUserByUsername(String username) {
+        return userRepository.findByUsername(username).orElse(null);
+    }
+
+    /**
+     * Kiểm tra xem username đã tồn tại chưa
+     *
+     * @param username Tên đăng nhập cần kiểm tra
+     * @return true nếu đã tồn tại, false nếu chưa
+     */
+    public boolean existsByUsername(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
+    /**
+     * Kiểm tra xem email đã tồn tại chưa
+     *
+     * @param email Email cần kiểm tra
+     * @return true nếu đã tồn tại, false nếu chưa
+     */
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
     }
 }

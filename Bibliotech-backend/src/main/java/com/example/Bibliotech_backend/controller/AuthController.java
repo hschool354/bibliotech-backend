@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 /**
- * Controller quản lý các API liên quan đến xác thực người dùng.
+ * Controller quản lý các API liên qua  n đến xác thực người dùng.
  */
 @RestController
 @RequestMapping("/api/auth")

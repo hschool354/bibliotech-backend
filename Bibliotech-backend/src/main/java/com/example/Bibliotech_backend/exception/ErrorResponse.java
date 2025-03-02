@@ -14,6 +14,12 @@ public class ErrorResponse {
     private LocalDateTime timestamp;
     private Map<String, String> errors;
 
+    public ErrorResponse(String message) {
+        this.status = 400; // Default to Bad Request
+        this.message = message;
+        this.timestamp = LocalDateTime.now();
+    }
+
     public ErrorResponse(int status, String message) {
         this.status = status;
         this.message = message;

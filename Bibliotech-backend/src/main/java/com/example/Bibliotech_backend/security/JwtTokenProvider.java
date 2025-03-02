@@ -5,8 +5,11 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.stereotype.Component;
+import org.springframework.security.core.Authentication;
 
 import java.lang.reflect.Field;
 import java.security.Key;
@@ -20,6 +23,9 @@ public class JwtTokenProvider {
      */
     @Value("${app.jwtSecret}")
     private String jwtSecret;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
     /**
      * Tạo token JWT cho người dùng.
@@ -85,5 +91,46 @@ public class JwtTokenProvider {
                 .getBody();
 
         return Integer.parseInt(claims.getSubject());
+    }
+
+    /**
+     * Trích xuất userId từ đối tượng Authentication.
+     *
+     * @param authentication Đối tượng Authentication từ SecurityContextHolder.
+     * @return Giá trị userId của người dùng.
+     */
+    public Integer getUserIdFromAuthentication(Authentication authentication) {
+        if (authentication == null) {
+            throw new IllegalArgumentException("Authentication không thể là null");
+        }
+
+        Object principal = authentication.getPrincipal();
+
+        // Nếu principal là một UserDetails custom
+        if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
+            // Lấy username từ UserDetails
+            String username = ((org.springframework.security.core.userdetails.UserDetails) principal).getUsername();
+
+            // Trong trường hợp này, username có thể là userId được lưu trong token
+            try {
+                return Integer.parseInt(username);
+            } catch (NumberFormatException e) {
+                // Nếu username không phải là một số nguyên, nó có thể là username thật
+                // Cần thực hiện truy vấn để lấy userId dựa trên username
+                throw new UnsupportedOperationException("Không thể trích xuất userId từ username: " + username);
+            }
+        }
+
+        // Nếu principal là String (thường là username hoặc userId)
+        if (principal instanceof String) {
+            try {
+                return Integer.parseInt((String) principal);
+            } catch (NumberFormatException e) {
+                // Nếu principal string không phải là một số nguyên, nó có thể là username thật
+                throw new UnsupportedOperationException("Không thể trích xuất userId từ principal: " + principal);
+            }
+        }
+
+        throw new IllegalArgumentException("Không thể trích xuất userId từ kiểu Authentication này");
     }
 }
