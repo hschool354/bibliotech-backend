@@ -1,9 +1,6 @@
 package com.example.Bibliotech_backend.service;
 
-import com.example.Bibliotech_backend.dto.BookRequest;
-import com.example.Bibliotech_backend.dto.BookResponse;
-import com.example.Bibliotech_backend.dto.CategoryResponse;
-import com.example.Bibliotech_backend.dto.DealResponse;
+import com.example.Bibliotech_backend.dto.*;
 import com.example.Bibliotech_backend.model.Book;
 import com.example.Bibliotech_backend.model.BookCategory;
 import com.example.Bibliotech_backend.model.Category;
@@ -386,6 +383,19 @@ public class BookService {
         response.setCategories(categoryResponses);
 
         return response;
+    }
+
+    public List<BookSaleInfoDTO> getSaleBooksCoverInfo() {
+        return bookRepository.findSaleBooksCoverInfo();
+    }
+
+    public List<BookResponse> getTopRatedBooks(int limit) {
+        Pageable topLimit = PageRequest.of(0, limit, Sort.by("averageRating").descending());
+        Page<Book> topRatedBooks = bookRepository.findTopRatedBooks(topLimit);
+
+        return topRatedBooks.stream()
+                .map(this::convertToBookResponse)
+                .collect(Collectors.toList());
     }
 
     private CategoryResponse convertToCategoryResponse(Category category) {

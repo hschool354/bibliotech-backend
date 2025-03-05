@@ -281,6 +281,29 @@ public class BookController {
         }
     }
 
+    @GetMapping("/sale-books-info")
+    public ResponseEntity<?> getSaleBooksCoverInfo() {
+        try {
+            List<BookSaleInfoDTO> saleBooks = bookService.getSaleBooksCoverInfo();
+            return ResponseEntity.ok(saleBooks);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse("Không thể lấy thông tin sách sale"));
+        }
+    }
+
+    @GetMapping("/top-rated")
+    public ResponseEntity<?> getTopRatedBooks(
+            @RequestParam(defaultValue = "5") int limit) {
+        try {
+            logger.info("API called: getTopRatedBooks");
+            List<BookResponse> topRatedBooks = bookService.getTopRatedBooks(limit);
+            return ResponseEntity.ok(topRatedBooks);
+        } catch (Exception e) {
+            logger.error("Error getting top rated books", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Không thể lấy sách có đánh giá cao nhất: " + e.getMessage()));
+        }
+    }
+
     /**
      * API lấy danh sách danh mục sách
      *

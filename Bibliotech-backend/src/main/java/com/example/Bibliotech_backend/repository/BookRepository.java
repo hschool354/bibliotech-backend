@@ -1,5 +1,6 @@
 package com.example.Bibliotech_backend.repository;
 
+import com.example.Bibliotech_backend.dto.BookSaleInfoDTO;
 import com.example.Bibliotech_backend.model.Book;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -63,4 +65,15 @@ public interface BookRepository extends JpaRepository<Book, Integer> {
             @Param("maxPrice") Double maxPrice,
             @Param("hasDiscount") Boolean hasDiscount,
             Pageable pageable);
+
+    @Query("SELECT new com.example.Bibliotech_backend.dto.BookSaleInfoDTO(" +
+            "b.bookId, b.title, b.coverImageUrl, b.originalPrice, b.discountedPrice) " +
+            "FROM Book b " +
+            "WHERE b.coverImageUrl IS NOT NULL " +
+            "AND (b.discountedPrice IS NOT NULL AND b.discountedPrice < b.originalPrice)")
+    List<BookSaleInfoDTO> findSaleBooksCoverInfo();
+
+    @Query("SELECT b FROM Book b " +
+            "ORDER BY b.averageRating DESC")
+    Page<Book> findTopRatedBooks(Pageable pageable);
 }

@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public class UserRegistrationStatus {
 
     @Id
+    @Column(name = "user_id")
     private Integer userId;
 
     @Column(name = "is_profile_completed", nullable = false)
@@ -15,6 +16,10 @@ public class UserRegistrationStatus {
 
     @Column(name = "profile_completion_date")
     private LocalDateTime profileCompletionDate;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private Users user;
 
     public UserRegistrationStatus() {
     }
@@ -47,5 +52,13 @@ public class UserRegistrationStatus {
 
     public void setProfileCompletionDate(LocalDateTime profileCompletionDate) {
         this.profileCompletionDate = profileCompletionDate;
+    }
+
+    public Users getUser() {
+        return user;
+    }
+
+    public void setUser(Users user) {
+        this.user = user;
     }
 }

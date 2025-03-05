@@ -2,12 +2,13 @@ package com.example.Bibliotech_backend.controller;
 
 import com.example.Bibliotech_backend.exception.ErrorResponse;
 import com.example.Bibliotech_backend.dto.ProfileData;
+import com.example.Bibliotech_backend.model.UserPreferences;
 import com.example.Bibliotech_backend.model.UserProfile;
 import com.example.Bibliotech_backend.model.Users;
+import com.example.Bibliotech_backend.model.UserLibrary;
+import com.example.Bibliotech_backend.model.ReadingHistory;
 import com.example.Bibliotech_backend.security.JwtTokenProvider;
-import com.example.Bibliotech_backend.service.AuthService;
-import com.example.Bibliotech_backend.service.UserProfileService;
-import com.example.Bibliotech_backend.service.UserRegistrationStatusService;
+import com.example.Bibliotech_backend.service.*;
 import com.example.Bibliotech_backend.util.TokenUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -43,6 +46,12 @@ public class UserController {
      */
     private final UserProfileService userProfileService;
 
+    private final UserPreferencesService userPreferencesService;
+
+    private final UserLibraryService userLibraryService;
+
+    private final ReadingHistoryService readingHistoryService;
+
     /**
      * Tiện ích xử lý token.
      */
@@ -65,12 +74,18 @@ public class UserController {
             AuthService authService,
             UserRegistrationStatusService registrationStatusService,
             UserProfileService userProfileService,
-            TokenUtils tokenUtils) {
+            TokenUtils tokenUtils,
+            UserPreferencesService userPreferencesService,
+            UserLibraryService userLibraryService,
+            ReadingHistoryService readingHistoryService) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.authService = authService;
         this.registrationStatusService = registrationStatusService;
         this.userProfileService = userProfileService;
         this.tokenUtils = tokenUtils;
+        this.userPreferencesService = userPreferencesService;
+        this.userLibraryService = userLibraryService;
+        this.readingHistoryService = readingHistoryService;
     }
 
     /**
@@ -303,6 +318,218 @@ public class UserController {
         } catch (Exception e) {
             logger.error("Lỗi khi cập nhật trạng thái đăng ký", e);
             return ResponseEntity.badRequest().body(new ErrorResponse("Lỗi cập nhật: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * API lấy danh sách sở thích của người dùng
+     * @return Danh sách sở thích của người dùng
+     */
+    @GetMapping("/preferences")
+    public ResponseEntity<?> getUserPreferences() {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            if (currentUser == null) {
+                logger.error("Không tìm thấy người dùng với username: {}", username);
+                return ResponseEntity.status(404).body(new ErrorResponse("Người dùng không tồn tại"));
+            }
+
+            List<UserPreferences> userPreferences = userPreferencesService.getUserPreferences(currentUser.getUserId());
+
+            // Log chi tiết để debug
+            logger.debug("Số lượng preferences: {}", userPreferences.size());
+            userPreferences.forEach(pref ->
+                    logger.debug("Preference - User ID: {}, Category ID: {}, Weight: {}",
+                            pref.getUserId(), pref.getPreferredCategoryId(), pref.getPreferenceWeight())
+            );
+
+            if (userPreferences.isEmpty()) {
+                return ResponseEntity.status(404).body(new ErrorResponse("Không tìm thấy preferences cho người dùng này"));
+            }
+
+            return ResponseEntity.ok(userPreferences);
+        } catch (Exception e) {
+            logger.error("Chi tiết lỗi khi lấy sở thích người dùng", e);
+            return ResponseEntity.status(500).body(new ErrorResponse("Lỗi hệ thống khi lấy sở thích"));
+        }
+    }
+
+    @PutMapping("/preferences")
+    public ResponseEntity<?> updateUserPreferences(@RequestBody List<UserPreferences> preferences) {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            if (currentUser == null) {
+                logger.error("Không tìm thấy người dùng với username: {}", username);
+                return ResponseEntity.status(404).body(new ErrorResponse("Người dùng không tồn tại"));
+            }
+
+            // Log chi tiết preferences nhận được
+            logger.debug("Số lượng preferences nhận được: {}", preferences.size());
+            preferences.forEach(pref ->
+                    logger.debug("Received Preference - Category ID: {}, Weight: {}",
+                            pref.getPreferredCategoryId(), pref.getPreferenceWeight())
+            );
+
+            List<UserPreferences> updatedPreferences = userPreferencesService.updateUserPreferences(currentUser.getUserId(), preferences);
+
+            // Log chi tiết preferences đã lưu
+            logger.debug("Số lượng preferences đã lưu: {}", updatedPreferences.size());
+            updatedPreferences.forEach(pref ->
+                    logger.debug("Saved Preference - User ID: {}, Category ID: {}, Weight: {}",
+                            pref.getUserId(), pref.getPreferredCategoryId(), pref.getPreferenceWeight())
+            );
+
+            return ResponseEntity.ok(updatedPreferences);
+        } catch (Exception e) {
+            logger.error("Chi tiết lỗi khi cập nhật sở thích người dùng", e);
+            return ResponseEntity.status(500).body(new ErrorResponse("Lỗi hệ thống khi cập nhật sở thích"));
+        }
+    }
+    /**
+     * API lấy thư viện sách của người dùng
+     * @return Danh sách sách trong thư viện
+     */
+    @GetMapping("/library")
+    public ResponseEntity<?> getUserLibrary() {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            if (currentUser == null) {
+                logger.error("Không tìm thấy người dùng với username: {}", username);
+                return ResponseEntity.notFound().build();
+            }
+
+            List<UserLibrary> userLibrary = userLibraryService.getUserLibrary(currentUser.getUserId());
+
+            return ResponseEntity.ok(userLibrary);
+        } catch (Exception e) {
+            logger.error("Lỗi khi lấy thư viện người dùng", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Không thể lấy thư viện người dùng"));
+        }
+    }
+
+    /**
+     * API thêm sách vào thư viện
+     * @param bookId ID của sách cần thêm
+     * @return Thông tin sách vừa được thêm vào thư viện
+     */
+    @PostMapping("/library")
+    public ResponseEntity<?> addBookToLibrary(@RequestBody Integer bookId) {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            if (currentUser == null) {
+                logger.error("Không tìm thấy người dùng với username: {}", username);
+                return ResponseEntity.notFound().build();
+            }
+
+            UserLibrary libraryEntry = userLibraryService.addBookToLibrary(currentUser.getUserId(), bookId);
+
+            return ResponseEntity.ok(libraryEntry);
+        } catch (Exception e) {
+            logger.error("Lỗi khi thêm sách vào thư viện", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Không thể thêm sách vào thư viện"));
+        }
+    }
+
+    @PatchMapping("/library/{bookId}")
+    public ResponseEntity<?> updateBookStatus(
+            @PathVariable Integer bookId,
+            @RequestBody Map<String, Object> updateData
+    ) {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            if (currentUser == null) {
+                logger.error("Không tìm thấy người dùng với username: {}", username);
+                return ResponseEntity.notFound().build();
+            }
+
+            UserLibrary userLibrary = new UserLibrary();
+
+            // Convert String to enum
+            if (updateData.containsKey("status")) {
+                String statusString = (String) updateData.get("status");
+                userLibrary.setStatus(UserLibrary.Status.valueOf(statusString.toUpperCase()));
+            }
+
+            // Set progress if provided
+            if (updateData.containsKey("progress")) {
+                userLibrary.setProgressPercentage((Integer) updateData.get("progress"));
+            }
+
+            UserLibrary updatedLibraryEntry = userLibraryService.updateBookStatus(
+                    currentUser.getUserId(),
+                    bookId,
+                    userLibrary
+            );
+
+            return ResponseEntity.ok(updatedLibraryEntry);
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid status provided", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Trạng thái không hợp lệ"));
+        } catch (Exception e) {
+            logger.error("Lỗi khi cập nhật trạng thái sách", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Không thể cập nhật trạng thái sách"));
+        }
+    }
+
+    /**
+     * API lấy lịch sử đọc sách của người dùng
+     * @return Danh sách lịch sử đọc sách
+     */
+    @GetMapping("/reading-history")
+    public ResponseEntity<?> getReadingHistory() {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            if (currentUser == null) {
+                logger.error("Không tìm thấy người dùng với username: {}", username);
+                return ResponseEntity.notFound().build();
+            }
+
+            List<ReadingHistory> readingHistory = readingHistoryService.getUserReadingHistory(currentUser.getUserId());
+
+            return ResponseEntity.ok(readingHistory);
+        } catch (Exception e) {
+            logger.error("Lỗi khi lấy lịch sử đọc", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Không thể lấy lịch sử đọc"));
+        }
+    }
+
+    /**
+     * API ghi nhận phiên đọc sách
+     * @param readingSession Thông tin phiên đọc
+     * @return Thông tin phiên đọc đã được ghi nhận
+     */
+    @PostMapping("/reading-history")
+    public ResponseEntity<?> recordReadingSession(@RequestBody ReadingHistory readingSession) {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            if (currentUser == null) {
+                logger.error("Không tìm thấy người dùng với username: {}", username);
+                return ResponseEntity.notFound().build();
+            }
+
+            // Đảm bảo session được gắn với user hiện tại
+            readingSession.setUserId(currentUser.getUserId());
+
+            ReadingHistory recordedSession = readingHistoryService.recordReadingSession(readingSession);
+
+            return ResponseEntity.ok(recordedSession);
+        } catch (Exception e) {
+            logger.error("Lỗi khi ghi nhận phiên đọc", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Không thể ghi nhận phiên đọc"));
         }
     }
 }
