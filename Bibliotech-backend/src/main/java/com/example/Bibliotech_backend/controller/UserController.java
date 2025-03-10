@@ -194,6 +194,32 @@ public class UserController {
     }
 
     /**
+     * API lấy số dư tài khoản của người dùng hiện tại
+     * @return Số dư tài khoản của người dùng đang đăng nhập
+     */
+    @GetMapping("/me/balance")
+    public ResponseEntity<?> getCurrentUserBalance() {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            if (currentUser == null) {
+                logger.error("Không tìm thấy người dùng hiện tại với username: {}", username);
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "userId", currentUser.getUserId(),
+                    "username", currentUser.getUsername(),
+                    "accountBalance", currentUser.getAccountBalance()
+            ));
+        } catch (Exception e) {
+            logger.error("Lỗi khi lấy thông tin số dư người dùng hiện tại", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Không thể lấy thông tin số dư người dùng"));
+        }
+    }
+
+    /**
      * API lấy thông tin tài khoản của một người dùng cụ thể
      * @param userId ID của người dùng cần lấy thông tin
      * @return Thông tin tài khoản của người dùng

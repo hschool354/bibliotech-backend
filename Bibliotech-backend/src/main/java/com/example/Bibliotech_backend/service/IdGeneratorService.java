@@ -142,5 +142,29 @@ public class IdGeneratorService {
             lock.unlock(); // Unlock to allow other threads to proceed
         }
     }
+
+    /**
+     * Tạo một ID mới cho giao dịch.
+     * <p>
+     * Phương thức này tìm ID lớn nhất trong bảng "Transactions" và tăng lên 1.
+     * Được bảo vệ bằng {@link ReentrantLock} để đảm bảo tính đồng bộ.
+     * </p>
+     *
+     * @return ID mới của giao dịch.
+     */
+    @Transactional
+    public int generateTransactionId() {
+        lock.lock(); // Khóa để đảm bảo an toàn luồng
+        try {
+            Query query = entityManager.createNativeQuery(
+                    "SELECT COALESCE(MAX(transaction_id), 0) FROM Transactions"
+            );
+            Number result = (Number) query.getSingleResult();
+            return result.intValue() + 1;
+        } finally {
+            lock.unlock(); // Mở khóa để giải phóng tài nguyên
+        }
+    }
+
 }
 
