@@ -3,7 +3,7 @@ package com.example.Bibliotech_backend.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "book_categories")
+@Table(name = "BookCategories")
 @IdClass(BookCategoryId.class)
 public class BookCategory {
 

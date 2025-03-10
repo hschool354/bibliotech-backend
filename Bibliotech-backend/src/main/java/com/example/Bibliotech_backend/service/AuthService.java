@@ -4,6 +4,7 @@ import com.example.Bibliotech_backend.dto.AuthResponse;
 import com.example.Bibliotech_backend.dto.LoginRequest;
 import com.example.Bibliotech_backend.dto.SignUpRequest;
 import com.example.Bibliotech_backend.exception.BadRequestException;
+import com.example.Bibliotech_backend.model.UserRegistrationStatus;
 import com.example.Bibliotech_backend.model.Users;
 import com.example.Bibliotech_backend.repository.UserRepository;
 import com.example.Bibliotech_backend.security.JwtTokenProvider;
@@ -36,6 +37,7 @@ public class AuthService {
      */
     @Autowired
     private UserRepository userRepository;
+
 
     /**
      * Mã hóa mật khẩu cho người dùng.
@@ -80,23 +82,40 @@ public class AuthService {
             throw new BadRequestException("Username already exists");
         }
 
-        // Tạo một đối tượng Users mới với thông tin đăng ký
-        Users user = new Users();
-        user.setUserId(idGeneratorService.generateUserId());
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRegistrationStatus(Users.RegistrationStatus.PENDING);
-        user.setIsAdmin(false);
+        try {
+            // Generate user ID first
+            Integer userId = idGeneratorService.generateUserId();
+            if (userId == null) {
+                throw new BadRequestException("Failed to generate user ID");
+            }
 
-        // Lưu người dùng vào cơ sở dữ liệu
-        Users savedUser = userRepository.save(user);
+            // Create user object
+            Users user = new Users();
+            user.setUserId(userId);
+            user.setUsername(request.getUsername());
+            user.setEmail(request.getEmail());
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setRegistrationStatus(Users.RegistrationStatus.PENDING);
+            user.setIsAdmin(false);
 
-        // Tạo token xác thực cho người dùng mới
-        String token = tokenProvider.generateToken(savedUser);
-        registrationStatusService.createStatus(user.getUserId());
+            // Save user
+            Users savedUser = userRepository.save(user);
+            userRepository.flush(); // Force immediate persistence
 
-        return new AuthResponse(token, user.getUsername(), user.getEmail(), true);
+            // Create registration status in the same transaction
+            UserRegistrationStatus status = registrationStatusService.createStatus(savedUser.getUserId());
+
+            if (status == null) {
+                throw new BadRequestException("Failed to create registration status");
+            }
+
+            // Generate token and return
+            String token = tokenProvider.generateToken(savedUser);
+            return new AuthResponse(token, savedUser.getUsername(), savedUser.getEmail(), true);
+        } catch (Exception e) {
+            // Add logging here
+            throw new BadRequestException("Registration failed: " + e.getMessage());
+        }
     }
 
     /**

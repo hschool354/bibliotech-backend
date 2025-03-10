@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 public class UserRegistrationStatus {
 
     @Id
-    @Column(name = "user_id")
+    @Column(name = "user_id")  // This should match exactly what's in your database
     private Integer userId;
 
     @Column(name = "is_profile_completed", nullable = false)

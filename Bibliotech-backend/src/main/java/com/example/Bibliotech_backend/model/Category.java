@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Entity
-@Table(name = "categories")
+@Table(name = "Categories")
 public class Category {
     @Id
     @Column(name = "category_id")

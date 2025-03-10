@@ -8,6 +8,7 @@ import java.time.LocalDate;
 public class UserProfile {
 
     @Id
+    @Column(name = "user_id")
     private Integer userId;
 
     @Column(name = "full_name")

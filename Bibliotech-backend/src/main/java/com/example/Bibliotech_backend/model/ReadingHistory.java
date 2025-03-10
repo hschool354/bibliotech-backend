@@ -10,7 +10,7 @@ import java.sql.Timestamp;
 public class ReadingHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "history_id")
+    @Column(name = "history_id", nullable = false, updatable = false)
     private Integer historyId;
 
     @NotNull

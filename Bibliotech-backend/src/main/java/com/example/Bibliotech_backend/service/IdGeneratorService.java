@@ -96,4 +96,51 @@ public class IdGeneratorService {
             lock.unlock(); // Mở khóa ngay khi xong để tránh deadlock
         }
     }
+
+    /**
+     * Tạo một ID mới cho cultivation level.
+     * <p>
+     * Phương thức này tìm ID lớn nhất trong bảng "CultivationLevels" và tăng lên 1.
+     * Được bảo vệ bằng {@link ReentrantLock} để đảm bảo tính đồng bộ.
+     * </p>
+     *
+     * @return ID mới của cultivation level.
+     */
+    @Transactional
+    public int generateCultivationLevelId() {
+        lock.lock(); // Đảm bảo không có hai luồng nào truy cập cùng lúc
+        try {
+            Query query = entityManager.createNativeQuery(
+                    "SELECT COALESCE(MAX(level_id), 0) FROM CultivationLevels"
+            );
+            Number result = (Number) query.getSingleResult();
+            return result.intValue() + 1;
+        } finally {
+            lock.unlock(); // Mở khóa ngay khi xong để tránh deadlock
+        }
+    }
+
+    /**
+     * Generate a new ID for deals.
+     * <p>
+     * This method finds the highest ID in the "Deals" table and increments it by 1.
+     * Protected by {@link ReentrantLock} to ensure thread safety.
+     * </p>
+     *
+     * @return New ID for deals.
+     */
+    @Transactional
+    public int generateDealId() {
+        lock.lock(); // Ensure no two threads access this at the same time
+        try {
+            Query query = entityManager.createNativeQuery(
+                    "SELECT COALESCE(MAX(deal_id), 0) FROM Deals"
+            );
+            Number result = (Number) query.getSingleResult();
+            return result.intValue() + 1;
+        } finally {
+            lock.unlock(); // Unlock to allow other threads to proceed
+        }
+    }
 }
+

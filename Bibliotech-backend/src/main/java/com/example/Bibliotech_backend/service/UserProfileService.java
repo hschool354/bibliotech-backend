@@ -9,10 +9,12 @@ import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
@@ -33,6 +35,9 @@ public class UserProfileService {
 
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     /**
      * Lấy thông tin profile của người dùng theo ID
@@ -62,13 +67,79 @@ public class UserProfileService {
             user.setUpdatedAt(LocalDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
             userRepository.save(user);
 
-            // Update and return the profile
-            UserProfile profile = userProfileRepository.findById(userId)
-                    .orElse(new UserProfile());
+            // Check if profile exists
+            boolean profileExists = userProfileRepository.existsById(userId);
 
-            profile.setUserId(userId);
-            modelMapper.map(profileData, profile);
-            return userProfileRepository.save(profile);
+            // Convert gender from string to enum, safely handling empty strings
+            String genderStr = profileData.getGender();
+            UserProfile.Gender gender = null;
+            if (genderStr != null && !genderStr.trim().isEmpty()) {
+                try {
+                    gender = UserProfile.Gender.valueOf(genderStr);
+                } catch (IllegalArgumentException e) {
+                    logger.warn("Invalid gender value: {}", genderStr);
+                }
+            }
+
+            // Properly handle empty strings
+            String phone = (profileData.getPhone() != null && !profileData.getPhone().trim().isEmpty())
+                    ? profileData.getPhone() : null;
+
+            String fullName = (profileData.getFullName() != null && !profileData.getFullName().trim().isEmpty())
+                    ? profileData.getFullName() : null;
+
+            String address = (profileData.getAddress() != null && !profileData.getAddress().trim().isEmpty())
+                    ? profileData.getAddress() : null;
+
+            String nationality = (profileData.getNationality() != null && !profileData.getNationality().trim().isEmpty())
+                    ? profileData.getNationality() : null;
+
+            String bio = (profileData.getBio() != null && !profileData.getBio().trim().isEmpty())
+                    ? profileData.getBio() : null;
+
+            String profilePictureUrl = (profileData.getProfilePictureUrl() != null && !profileData.getProfilePictureUrl().trim().isEmpty())
+                    ? profileData.getProfilePictureUrl() : null;
+
+            // Handle empty date
+            LocalDate dob = profileData.getDob() != null ? profileData.getDob() : null;
+
+            if (profileExists) {
+                // Update existing profile using UPDATE instead of INSERT
+                jdbcTemplate.update(
+                        "UPDATE UserProfiles SET " +
+                                "full_name = ?, phone = ?, dob = ?, gender = ?, address = ?, " +
+                                "nationality = ?, bio = ?, profile_picture_url = ? " +
+                                "WHERE user_id = ?",
+                        fullName,
+                        phone,
+                        dob,
+                        gender != null ? gender.name() : null,
+                        address,
+                        nationality,
+                        bio,
+                        profilePictureUrl,
+                        userId
+                );
+            } else {
+                // Insert new profile
+                jdbcTemplate.update(
+                        "INSERT INTO UserProfiles (" +
+                                "user_id, full_name, phone, dob, gender, address, nationality, bio, profile_picture_url" +
+                                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        userId,
+                        fullName,
+                        phone,
+                        dob,
+                        gender != null ? gender.name() : null,
+                        address,
+                        nationality,
+                        bio,
+                        profilePictureUrl
+                );
+            }
+
+            // Fetch and return the updated or newly created profile
+            return userProfileRepository.findById(userId).orElse(null);
         }
 
         return null;

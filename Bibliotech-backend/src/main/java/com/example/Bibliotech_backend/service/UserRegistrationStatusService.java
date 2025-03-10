@@ -2,126 +2,230 @@ package com.example.Bibliotech_backend.service;
 
 import com.example.Bibliotech_backend.dto.ProfileData;
 import com.example.Bibliotech_backend.exception.BadRequestException;
+import com.example.Bibliotech_backend.exception.ResourceNotFoundException;
 import com.example.Bibliotech_backend.model.UserProfile;
 import com.example.Bibliotech_backend.model.UserRegistrationStatus;
+import com.example.Bibliotech_backend.model.Users;
 import com.example.Bibliotech_backend.repository.UserProfileRepository;
 import com.example.Bibliotech_backend.repository.UserRegistrationStatusRepository;
 import com.example.Bibliotech_backend.repository.UserRepository;
 import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 /**
- * Service quản lý trạng thái đăng ký của người dùng.
- * Xử lý logic liên quan đến lần đăng nhập đầu tiên, hoàn thành hồ sơ và trạng thái đăng ký.
+ * Service managing user registration status.
+ * Handles logic related to first login, profile completion, and registration status.
  */
 @Service
 public class UserRegistrationStatusService {
+    private static final Logger logger = LoggerFactory.getLogger(UserRegistrationStatusService.class);
+
+    private final UserRegistrationStatusRepository statusRepository;
+    private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final ModelMapper modelMapper;
 
     @Autowired
-    private UserRegistrationStatusRepository repository;
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private UserProfileRepository userProfileRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
+    public UserRegistrationStatusService(
+            UserRegistrationStatusRepository statusRepository,
+            UserRepository userRepository,
+            UserProfileRepository userProfileRepository,
+            ModelMapper modelMapper) {
+        this.statusRepository = statusRepository;
+        this.userRepository = userRepository;
+        this.userProfileRepository = userProfileRepository;
+        this.modelMapper = modelMapper;
+    }
 
     /**
-     * Kiểm tra xem đây có phải lần đăng nhập đầu tiên của người dùng không.
+     * Checks if this is the user's first login.
      *
-     * @param userId ID của người dùng.
-     * @return true nếu đây là lần đăng nhập đầu tiên, ngược lại false.
-     * @throws BadRequestException nếu người dùng không tồn tại.
+     * @param userId The user ID.
+     * @return true if this is the first login, otherwise false.
+     * @throws ResourceNotFoundException if the user doesn't exist.
      */
+    @Transactional(readOnly = true)
     public boolean isFirstLogin(Integer userId) {
         if (!userRepository.existsById(userId)) {
-            throw new BadRequestException("User not found");
+            throw new ResourceNotFoundException("User not found with ID: " + userId);
         }
 
-        return repository.findById(userId)
-                .map(status -> !status.isProfileCompleted() || status.getProfileCompletionDate() == null)
-                .orElseGet(() -> {
-                    UserRegistrationStatus newStatus = new UserRegistrationStatus();
-                    newStatus.setUserId(userId);
-                    newStatus.setProfileCompleted(false);
-                    repository.save(newStatus);
-                    return true;
-                });
+        return statusRepository.findById(userId)
+                .map(status -> !status.isProfileCompleted())
+                .orElse(true); // If no status exists, it's considered first login
     }
 
     /**
-     * Tạo một bản ghi trạng thái đăng ký mới cho người dùng.
+     * Creates a new registration status record for a user.
+     * This should be called right after user creation.
      *
-     * @param userId ID của người dùng.
-     * @return Đối tượng UserRegistrationStatus mới được tạo.
+     * @param userId The user ID.
+     * @return The newly created UserRegistrationStatus.
+     * @throws BadRequestException if the user doesn't exist or if the userId is null.
      */
+    @Transactional
     public UserRegistrationStatus createStatus(Integer userId) {
-        UserRegistrationStatus status = new UserRegistrationStatus();
-        status.setUserId(userId);
-        status.setProfileCompleted(false);
-        return repository.save(status);
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+
+        try {
+            // Change 'user_id' to 'userId' to match your database column name
+            jdbcTemplate.update(
+                    "INSERT INTO UserRegistrationStatus (user_id, is_profile_completed) VALUES (?, ?)",
+                    userId, false
+            );
+
+            // Now fetch what we just created
+            Optional<UserRegistrationStatus> created = statusRepository.findById(userId);
+            if (created.isPresent()) {
+                return created.get();
+            } else {
+                throw new RuntimeException("Failed to retrieve created status record");
+            }
+        } catch (Exception e) {
+            System.err.println("Error creating status: " + e.getMessage());
+            throw new RuntimeException("Failed to create status: " + e.getMessage(), e);
+        }
     }
 
+
     /**
-     * Đánh dấu hồ sơ của người dùng là đã hoàn thành.
+     * Marks a user's profile as completed.
      *
-     * @param userId ID của người dùng.
+     * @param userId The user ID.
+     * @throws ResourceNotFoundException if the status record doesn't exist.
      */
+    @Transactional
     public void markProfileCompleted(Integer userId) {
-        repository.findById(userId).ifPresent(status -> {
-            status.setProfileCompleted(true);
-            status.setProfileCompletionDate(LocalDateTime.now());
-            repository.save(status);
+        UserRegistrationStatus status = statusRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Registration status not found for user ID: " + userId));
+
+        status.setProfileCompleted(true);
+        status.setProfileCompletionDate(LocalDateTime.now());
+        statusRepository.save(status);
+
+        // Also update user's registration status if needed
+        userRepository.findById(userId).ifPresent(user -> {
+            if (user.getRegistrationStatus() != Users.RegistrationStatus.COMPLETED) {
+                user.setRegistrationStatus(Users.RegistrationStatus.COMPLETED);
+                userRepository.save(user);
+            }
         });
+
+        logger.info("Marked profile as completed for user ID: {}", userId);
     }
 
     /**
-     * Hoàn thành hồ sơ của người dùng bằng cách lưu dữ liệu vào UserProfile
-     * và cập nhật trạng thái đăng ký.
+     * Completes a user's profile by saving data to UserProfile and updating registration status.
      *
-     * @param userId ID của người dùng.
-     * @param profileData Dữ liệu hồ sơ của người dùng.
+     * @param userId The user ID.
+     * @param profileData The user's profile data.
+     * @throws BadRequestException if profile data is invalid.
      */
+    @Transactional
     public void completeProfile(Integer userId, ProfileData profileData) {
+        if (profileData == null) {
+            throw new BadRequestException("Profile data cannot be null");
+        }
+
+        // Verify user exists
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User not found with ID: " + userId);
+        }
+
+        // Get or create user profile
         UserProfile profile = userProfileRepository.findById(userId)
                 .orElse(new UserProfile());
+
         profile.setUserId(userId);
 
+        // Map and validate profile data
         modelMapper.map(profileData, profile);
-        userProfileRepository.save(profile);
-        markProfileCompleted(userId);
+
+        // Save profile
+        try {
+            userProfileRepository.save(profile);
+            markProfileCompleted(userId);
+            logger.info("Completed profile for user ID: {}", userId);
+        } catch (Exception e) {
+            logger.error("Failed to complete profile for user ID: {}", userId, e);
+            throw new BadRequestException("Failed to save profile: " + e.getMessage());
+        }
     }
 
     /**
-     * Cập nhật trạng thái đăng ký của người dùng
+     * Updates a user's registration status.
      *
-     * @param userId ID của người dùng
-     * @param isProfileCompleted Trạng thái hoàn thành profile
-     * @return true nếu cập nhật thành công, false nếu thất bại
+     * @param userId The user ID.
+     * @param isProfileCompleted The profile completion status.
+     * @return true if update was successful, false otherwise.
      */
-    public Boolean updateRegistrationStatus(Integer userId, Boolean isProfileCompleted) {
+    @Transactional
+    public boolean updateRegistrationStatus(Integer userId, Boolean isProfileCompleted) {
         try {
-            UserRegistrationStatus status = repository.findById(userId)
-                    .orElse(new UserRegistrationStatus());
-
-            status.setUserId(userId);
-            status.setProfileCompleted(isProfileCompleted);
-
-            if (isProfileCompleted && status.getProfileCompletionDate() == null) {
-                status.setProfileCompletionDate(LocalDateTime.from(Instant.now()));
+            if (userId == null || isProfileCompleted == null) {
+                logger.warn("Invalid parameters for updating registration status");
+                return false;
             }
 
-            repository.save(status);
+            // Get or create status
+            UserRegistrationStatus status = statusRepository.findById(userId)
+                    .orElseGet(() -> {
+                        UserRegistrationStatus newStatus = new UserRegistrationStatus();
+                        newStatus.setUserId(userId);
+                        return newStatus;
+                    });
+
+            // Update status
+            status.setProfileCompleted(isProfileCompleted);
+
+            // Set completion date if completing for the first time
+            if (isProfileCompleted && status.getProfileCompletionDate() == null) {
+                status.setProfileCompletionDate(LocalDateTime.now());
+            }
+
+            statusRepository.save(status);
+
+            // Also update user's registration status if needed
+            userRepository.findById(userId).ifPresent(user -> {
+                Users.RegistrationStatus newStatus = isProfileCompleted
+                        ? Users.RegistrationStatus.COMPLETED
+                        : Users.RegistrationStatus.PENDING;
+
+                if (user.getRegistrationStatus() != newStatus) {
+                    user.setRegistrationStatus(newStatus);
+                    userRepository.save(user);
+                }
+            });
+
+            logger.info("Updated registration status for user ID: {}", userId);
             return true;
         } catch (Exception e) {
+            logger.error("Failed to update registration status for user ID: {}", userId, e);
             return false;
         }
+    }
+
+    /**
+     * Retrieves a user's registration status.
+     *
+     * @param userId The user ID.
+     * @return The user's registration status, or null if not found.
+     */
+    @Transactional(readOnly = true)
+    public UserRegistrationStatus getStatus(Integer userId) {
+        return statusRepository.findById(userId).orElse(null);
     }
 }

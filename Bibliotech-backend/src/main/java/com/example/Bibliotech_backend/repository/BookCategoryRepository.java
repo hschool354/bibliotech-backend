@@ -38,7 +38,7 @@ public interface BookCategoryRepository extends JpaRepository<BookCategory, Book
 
     @Modifying
     @Transactional
-    @Query(value = "INSERT INTO book_categories (book_id, category_id) VALUES (:bookId, :categoryId)", nativeQuery = true)
+    @Query(value = "INSERT INTO BookCategories (book_id, category_id) VALUES (:bookId, :categoryId)", nativeQuery = true)
     void saveBookCategory(@Param("bookId") Integer bookId, @Param("categoryId") Integer categoryId);
 
     /**
