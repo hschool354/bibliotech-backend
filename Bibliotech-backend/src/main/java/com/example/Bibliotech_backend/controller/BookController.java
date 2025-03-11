@@ -6,16 +6,16 @@ import com.example.Bibliotech_backend.model.Book;
 import com.example.Bibliotech_backend.model.Category;
 import com.example.Bibliotech_backend.model.Review;
 import com.example.Bibliotech_backend.model.Users;
-import com.example.Bibliotech_backend.service.AuthService;
-import com.example.Bibliotech_backend.service.BookService;
-import com.example.Bibliotech_backend.service.CategoryService;
-import com.example.Bibliotech_backend.service.ReviewService;
+import com.example.Bibliotech_backend.service.*;
 import com.example.Bibliotech_backend.util.TokenUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
 import jakarta.validation.Valid;
 import java.util.List;
@@ -32,6 +32,8 @@ public class BookController {
     private final ReviewService reviewService;
     private final AuthService authService;
     private final TokenUtils tokenUtils;
+    private final CloudinaryService cloudinaryService;
+
 
     private static final Logger logger = LoggerFactory.getLogger(BookController.class);
 
@@ -48,12 +50,14 @@ public class BookController {
                           CategoryService categoryService,
                           ReviewService reviewService,
                           AuthService authService,
-                          TokenUtils tokenUtils) {
+                          TokenUtils tokenUtils,
+                          CloudinaryService cloudinaryService) {
         this.bookService = bookService;
         this.categoryService = categoryService;
         this.reviewService = reviewService;
         this.authService = authService;
         this.tokenUtils = tokenUtils;
+        this.cloudinaryService = cloudinaryService;
     }
 
     /**
@@ -347,6 +351,36 @@ public class BookController {
         } catch (Exception e) {
             logger.error("Error adding category", e);
             return ResponseEntity.badRequest().body(new ErrorResponse("Không thể thêm danh mục: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/upload-cover")
+    public ResponseEntity<?> uploadBookCover(@RequestParam("file") MultipartFile file) {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            // Check admin rights
+            if (currentUser == null || !currentUser.getIsAdmin()) {
+                logger.error("Unauthorized attempt to upload image by user: {}", username);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Bạn không có quyền thực hiện thao tác này"));
+            }
+
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(new ErrorResponse("Vui lòng chọn file"));
+            }
+
+            // Check file type
+            if (!file.getContentType().startsWith("image/")) {
+                return ResponseEntity.badRequest().body(new ErrorResponse("Chỉ hỗ trợ file hình ảnh"));
+            }
+
+            String imageUrl = cloudinaryService.uploadFile(file);
+            return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
+        } catch (Exception e) {
+            logger.error("Error uploading book cover", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Không thể tải lên ảnh bìa: " + e.getMessage()));
         }
     }
 }

@@ -166,5 +166,50 @@ public class IdGeneratorService {
         }
     }
 
+    /**
+     * Tạo một ID mới cho phương thức thanh toán.
+     * <p>
+     * Phương thức này tìm ID lớn nhất trong bảng "PaymentMethods" và tăng lên 1.
+     * Được bảo vệ bằng {@link ReentrantLock} để đảm bảo tính đồng bộ.
+     * </p>
+     *
+     * @return ID mới của phương thức thanh toán.
+     */
+    @Transactional
+    public int generatePaymentMethodId() {
+        lock.lock(); // Đảm bảo không có hai luồng nào truy cập cùng lúc
+        try {
+            Query query = entityManager.createNativeQuery(
+                    "SELECT COALESCE(MAX(payment_method_id), 0) FROM PaymentMethods"
+            );
+            Number result = (Number) query.getSingleResult();
+            return result.intValue() + 1;
+        } finally {
+            lock.unlock(); // Mở khóa ngay khi xong để tránh deadlock
+        }
+    }
+
+    /**
+     * Tạo một ID mới cho gói Premium.
+     * <p>
+     * Phương thức này tìm ID lớn nhất trong bảng "PremiumPackages" và tăng lên 1.
+     * Được bảo vệ bằng {@link ReentrantLock} để đảm bảo tính đồng bộ.
+     * </p>
+     *
+     * @return ID mới của gói Premium.
+     */
+    @Transactional
+    public int generatePremiumPackageId() {
+        lock.lock(); // Đảm bảo không có hai luồng nào truy cập cùng lúc
+        try {
+            Query query = entityManager.createNativeQuery(
+                    "SELECT COALESCE(MAX(package_id), 0) FROM PremiumPackages"
+            );
+            Number result = (Number) query.getSingleResult();
+            return result.intValue() + 1;
+        } finally {
+            lock.unlock(); // Mở khóa ngay khi xong để tránh deadlock
+        }
+    }
 }
 

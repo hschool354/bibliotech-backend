@@ -31,6 +31,9 @@ public class BookService {
     private final BookCategoryRepository bookCategoryRepository;
     private final IdGeneratorService idGeneratorService;
 
+    @Autowired
+    private CloudinaryService cloudinaryService;
+
     private static final Logger logger = LoggerFactory.getLogger(BookService.class);
 
     @Autowired
@@ -114,9 +117,6 @@ public class BookService {
         return getFullBookResponse(savedBook.getBookId());
     }
 
-    /**
-     * Cập nhật thông tin sách
-     */
     @Transactional
     public BookResponse updateBook(Integer bookId, BookRequest bookRequest) {
         logger.debug("Updating book with ID: {}", bookId);
@@ -126,7 +126,10 @@ public class BookService {
         if (bookOptional.isPresent()) {
             Book book = bookOptional.get();
 
-            // First, handle the basic book information updates
+            // Store old image URL for potential deletion
+            String oldImageUrl = book.getCoverImageUrl();
+
+            // Update book info
             try {
                 updateBookFromRequest(book, bookRequest);
             } catch (Exception e) {
@@ -134,24 +137,25 @@ public class BookService {
                 throw new RuntimeException("Error updating book from request", e);
             }
 
-            // Fix for the language issue
-            if (bookRequest.getLanguage() != null) {
+            // If image URL changed and old one exists, delete the old image from Cloudinary
+            if (oldImageUrl != null && !oldImageUrl.isEmpty() &&
+                    !oldImageUrl.equals(book.getCoverImageUrl())) {
                 try {
-                    book.setLanguage(Book.Language.valueOf(bookRequest.getLanguage().toUpperCase()));
-                } catch (IllegalArgumentException e) {
-                    logger.warn("Invalid language value: {}. Setting to OTHER.", bookRequest.getLanguage());
-                    book.setLanguage(Book.Language.Other);
+                    String publicId = cloudinaryService.extractPublicIdFromUrl(oldImageUrl);
+                    if (publicId != null) {
+                        boolean deleted = cloudinaryService.deleteFile(publicId);
+                        logger.debug("Deleted old image: {} - Success: {}", publicId, deleted);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to delete old image from Cloudinary", e);
+                    // Continue with the update even if image deletion fails
                 }
             }
 
+            // Rest of your existing code...
             Book updatedBook = bookRepository.save(book);
-
-            // Handle categories in a separate transaction to prevent rolling back the book update
             updateBookCategories(bookId, bookRequest.getCategoryIds());
-
-            // Reload the book to get the updated categories
             Book refreshedBook = bookRepository.findById(bookId).orElse(updatedBook);
-
             return convertToBookResponse(refreshedBook);
         }
 
