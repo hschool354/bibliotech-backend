@@ -48,12 +48,22 @@ public class CloudinaryService {
     }
 
     public String extractPublicIdFromUrl(String url) {
-        // Implementation to extract public ID from the URL
-        // This is just an example, adjust the logic as needed
         if (url == null || url.isEmpty()) {
             return null;
         }
-        String[] parts = url.split("/");
-        return parts[parts.length - 1].split("\\.")[0];
+
+        try {
+            //https://res.cloudinary.com/dgtfegznk/image/upload/v1741658639/Call_It_Home_r8bsqb.jpg
+            //https://res.cloudinary.com/dgtfegznk/image/upload/v1741658639/Don_t_Push_the_Button_cvmlva.jpg
+            // Extract the public ID from a URL like:
+            String[] urlParts = url.split("/");
+            String fileName = urlParts[urlParts.length - 1];
+            String folder = urlParts[urlParts.length - 2];
+            String publicId = folder + "/" + fileName.substring(0, fileName.lastIndexOf('.'));
+            return publicId;
+        } catch (Exception e) {
+            logger.error("Error extracting public ID from URL: {}", url, e);
+            return null;
+        }
     }
 }

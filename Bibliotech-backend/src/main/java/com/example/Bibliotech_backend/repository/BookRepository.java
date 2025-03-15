@@ -26,10 +26,10 @@ public interface BookRepository extends JpaRepository<Book, Integer> {
      */
     @Query("SELECT DISTINCT b FROM Book b " +
             "JOIN BookCategory bc ON b.bookId = bc.bookId " +
-            "WHERE (:title IS NULL OR LOWER(b.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
-            "AND (:author IS NULL OR LOWER(b.author) LIKE LOWER(CONCAT('%', :author, '%'))) " +
+            "WHERE (:title IS NULL OR :title = '' OR LOWER(b.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
+            "AND (:author IS NULL OR :author = '' OR LOWER(b.author) LIKE LOWER(CONCAT('%', :author, '%'))) " +
             "AND bc.categoryId = :categoryId " +
-            "AND (:language IS NULL OR LOWER(b.language) = LOWER(:language)) " +
+            "AND (:language IS NULL OR :language = '' OR LOWER(b.language) = LOWER(:language)) " +
             "AND (:minPrice IS NULL OR b.originalPrice >= :minPrice) " +
             "AND (:maxPrice IS NULL OR b.originalPrice <= :maxPrice) " +
             "AND (:hasDiscount IS NULL OR " +
@@ -45,13 +45,10 @@ public interface BookRepository extends JpaRepository<Book, Integer> {
             @Param("hasDiscount") Boolean hasDiscount,
             Pageable pageable);
 
-    /**
-     * Tìm kiếm sách với các bộ lọc không bao gồm danh mục
-     */
     @Query("SELECT b FROM Book b " +
-            "WHERE (:title IS NULL OR LOWER(b.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
-            "AND (:author IS NULL OR LOWER(b.author) LIKE LOWER(CONCAT('%', :author, '%'))) " +
-            "AND (:language IS NULL OR LOWER(b.language) = LOWER(:language)) " +
+            "WHERE (:title IS NULL OR :title = '' OR LOWER(b.title) LIKE LOWER(CONCAT('%', :title, '%'))) " +
+            "AND (:author IS NULL OR :author = '' OR LOWER(b.author) LIKE LOWER(CONCAT('%', :author, '%'))) " +
+            "AND (:language IS NULL OR :language = '' OR LOWER(b.language) = LOWER(:language)) " +
             "AND (:minPrice IS NULL OR b.originalPrice >= :minPrice) " +
             "AND (:maxPrice IS NULL OR b.originalPrice <= :maxPrice) " +
             "AND (:hasDiscount IS NULL OR " +
