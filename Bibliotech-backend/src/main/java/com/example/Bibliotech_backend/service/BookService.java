@@ -319,7 +319,7 @@ public class BookService {
     /**
      * Chuyển đổi từ Book sang BookResponse
      */
-    private BookResponse convertToBookResponse(Book book) {
+    public BookResponse convertToBookResponse(Book book) {
         BookResponse response = new BookResponse();
 
         response.setBookId(book.getBookId());

@@ -211,5 +211,20 @@ public class IdGeneratorService {
             lock.unlock(); // Mở khóa ngay khi xong để tránh deadlock
         }
     }
+
+    //
+    @Transactional
+    public int generateWishlistId() {
+        lock.lock(); // Đảm bảo không có hai luồng nào truy cập cùng lúc
+        try {
+            Query query = entityManager.createNativeQuery(
+                    "SELECT COALESCE(MAX(wishlist_id), 0) FROM Wishlist"
+            );
+            Number result = (Number) query.getSingleResult();
+            return result.intValue() + 1;
+        } finally {
+            lock.unlock(); // Mở khóa ngay khi xong để tránh deadlock
+        }
+    }
 }
 

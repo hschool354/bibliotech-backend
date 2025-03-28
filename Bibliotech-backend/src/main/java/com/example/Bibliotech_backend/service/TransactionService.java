@@ -1,11 +1,14 @@
 package com.example.Bibliotech_backend.service;
 
+import com.example.Bibliotech_backend.dto.BookResponse;
 import com.example.Bibliotech_backend.model.Transaction;
 import com.example.Bibliotech_backend.model.TransactionStatus;
 import com.example.Bibliotech_backend.model.TransactionType;
 import com.example.Bibliotech_backend.model.Users;
+import com.example.Bibliotech_backend.repository.BookRepository;
 import com.example.Bibliotech_backend.repository.TransactionRepository;
 import com.example.Bibliotech_backend.repository.UserRepository;
+import com.example.Bibliotech_backend.model.Book;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +16,12 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class TransactionService {
@@ -26,6 +31,12 @@ public class TransactionService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private BookRepository bookRepository;
+
+    @Autowired
+    private BookService bookService;
 
     private static final Logger logger = LoggerFactory.getLogger(TransactionService.class);
 
@@ -255,5 +266,39 @@ public class TransactionService {
 
         user.setAccountBalance(newBalance);
         userRepository.save(user);
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<BookResponse> getPurchasedBooksByUser(Integer userId) {
+        logger.debug("Getting purchased books for user ID: {}", userId);
+
+        // Lấy danh sách giao dịch mua sách đã hoàn tất của người dùng
+        List<Transaction> purchaseTransactions = transactionRepository.findByUserIdAndTransactionTypeAndStatus(
+                userId, TransactionType.MUA, TransactionStatus.COMPLETED);
+
+        // Lấy danh sách bookId từ các giao dịch
+        List<Integer> purchasedBookIds = purchaseTransactions.stream()
+                .map(Transaction::getBookId)
+                .filter(bookId -> bookId != null)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (purchasedBookIds.isEmpty()) {
+            logger.debug("No purchased books found for user ID: {}", userId);
+            return List.of(); // Trả về danh sách rỗng nếu không có sách nào
+        }
+
+        // Lấy thông tin chi tiết của các sách đã mua
+        List<Book> purchasedBooks = bookRepository.findAllById(purchasedBookIds);
+
+        // Chuyển đổi sang BookResponse
+        return purchasedBooks.stream()
+                .map(bookService::convertToBookResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<Transaction> getAllTransactions() {
+        return transactionRepository.findAll();
     }
 }

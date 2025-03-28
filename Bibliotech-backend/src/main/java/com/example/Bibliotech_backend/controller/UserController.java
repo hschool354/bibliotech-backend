@@ -558,4 +558,23 @@ public class UserController {
             return ResponseEntity.badRequest().body(new ErrorResponse("Không thể ghi nhận phiên đọc"));
         }
     }
+
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            String username = tokenUtils.getCurrentUsername();
+            Users currentUser = authService.getUserByUsername(username);
+
+            if (currentUser == null || !currentUser.getIsAdmin()) {
+                logger.error("User {} is not authorized to access all users", username);
+                return ResponseEntity.status(403).body(new ErrorResponse("You are not authorized to access this resource"));
+            }
+
+            List<Users> allUsers = authService.getAllUsers();
+            return ResponseEntity.ok(allUsers);
+        } catch (Exception e) {
+            logger.error("Error while fetching all users", e);
+            return ResponseEntity.status(500).body(new ErrorResponse("An error occurred while fetching users"));
+        }
+    }
 }
